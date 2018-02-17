@@ -23,21 +23,25 @@ class LaserChat:
 
         self.to_font = pygame.font.SysFont('mono', 20, bold=True)        
         self.to = 1
+        self.sender = 1
+        self.left_addr = 3
+        self.right_addr = 4
+        
+        self.link_font = pygame.font.SysFont('mono', 20, bold=True)
         
         self.background = pygame.Surface((self.screen_width, self.screen_height)).convert()
         self.background.fill((64,64,64))
         self.grid = self.generate_grid()
-        self.populate_background()
-
-
-        
+        self.populate_background()     
         self.clock = pygame.time.Clock()
+        self.fps = 300
         
     def generate_grid(self):
         """Split the grid into the given number of sections for coord snapping"""
         grid = self.background
         left_pad = (self.screen_width % (self.x_multiplier * self.h_slices)) // 2
         top_pad = (self.screen_height % (self.y_multiplier * self.v_slices)) // 2
+        x_pos = [(self.x_multiplier * x) + left_pad for x in range(self.h_slices)]
         x_pos = [(self.x_multiplier * x) + left_pad for x in range(self.h_slices)]
         y_pos = [(self.y_multiplier * y) + top_pad for y in range(self.v_slices)]
         coords = [[(x, y) for y in y_pos] for x in x_pos]
@@ -99,7 +103,6 @@ class LaserChat:
         self.draw_shape((76,37), (2,2), (8,8,8), surface=surface)
         self.draw_shape((75,36), (4,1), (16,16,16), surface=surface)
         self.draw_shape((75,39), (4,1), (16,16,16), surface=surface)
-
     
     def populate_background(self):
         self.draw_backgrid()
@@ -110,6 +113,21 @@ class LaserChat:
         self.draw_entry_box()
         self.draw_chat_box()
         self.draw_hud()
+        
+    def draw_link_low(self, coords, num):
+        self.draw_shape(coords, (2,2), (128,128,128), surface=self.screen)
+        self.draw_shape((coords[0]+4, coords[1]), (2,2), (128,128,128), surface=self.screen)
+        surface = self.to_font.render('{:02}'.format(num), True, (128,8,8))
+        x, y = self.grid[coords[0]][coords[1]]       
+        self.screen.blit(surface, (x+6, y+6))
+        
+    def draw_link_mid(self, coords, num):
+        self.draw_shape(coords, (2,2), (128,128,128), surface=self.screen)
+        self.draw_shape((coords[0], coords[1] + 4), (2,2), (64,64,64), surface=self.screen)
+        surface = self.to_font.render('{:02}'.format(num), True, (8,8,128))
+        x, y = self.grid[coords[0]][coords[1]]       
+        self.screen.blit(surface, (x+5, y+6))
+        
         
     def draw_poly(self, coords, color, surface=None):
         if not surface:
@@ -143,6 +161,8 @@ class LaserChat:
         self.screen.blit(surface, (x, y))
             
     def scroll_letter_up(self, letter='X', delay=0, color=(255,255,255)):
+        to = self.to
+        sender = self.sender
         x, y = self.grid[38][40]
         end_y = self.grid[40][32][1]
         x += (self.x_multiplier // 2) + 3
@@ -155,6 +175,9 @@ class LaserChat:
             y -= 1 
             yield True
         yield False
+            
+    def route(self, to, sender, message):
+        pass
             
     def run(self):
         running = True
@@ -169,6 +192,7 @@ class LaserChat:
                         running = False
                     elif event.key == pygame.K_RETURN:
                         lower_pipe_scrolls += [self.scroll_letter_up(letter=letter, delay=delay * 18, color=self.text_colors[self.entry_text_index]) for delay, letter in enumerate(self.entry_text)]
+                        self.route(self.to, self.sender, self.entry_text)
                         self.entry_text = ''
                     elif event.key == pygame.K_BACKSPACE:
                         self.entry_text = self.entry_text[:-1]
@@ -196,16 +220,21 @@ class LaserChat:
                         lower_pipe_scrolls.pop(index)
 
                         
+
+                        
             self.draw_router(surface=self.screen)
             self.draw_entry_box(surface=self.screen)
             self.draw_upper_pipe(surface=self.screen)
             self.draw_chat_box(surface=self.screen)
             self.draw_to_text()
+            self.draw_link_low((36,38), self.sender)
+            self.draw_link_mid((0,21), self.left_addr)
+            self.draw_link_mid((78,21), self.right_addr)
             
             self.draw_entry_text('|> {}'.format(self.entry_text), (1,42))
             pygame.display.flip()
             self.screen.blit(self.background, (0, 0))
-            self.clock.tick(300)
+            self.clock.tick(self.fps)
         pygame.quit()            
 
 
